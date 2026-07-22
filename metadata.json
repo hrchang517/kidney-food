@@ -1,0 +1,8 @@
+{
+  "name": "신장 건강 식단 가이드",
+  "description": "신장 건강을 위한 맞춤형 음식 정보와 하루 식단 제안을 제공합니다.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
