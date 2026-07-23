@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: healthy-diet-food
+    name: kidney-food
     runtime: node
     plan: free
     buildCommand: npm install --include=dev && npm run build
