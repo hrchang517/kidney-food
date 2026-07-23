@@ -72,7 +72,7 @@ export default function App() {
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Condition Selector */}
-        <div className="flex flex-nowrap overflow-x-auto sm:flex-wrap sm:overflow-visible sm:justify-center gap-2 mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 no-scrollbar">
+        <div className="flex flex-nowrap justify-center gap-1 sm:gap-2 mb-6">
           {CONDITIONS.map((c) => {
             const Icon = CONDITION_ICONS[c.key];
             const isActive = condition === c.key;
@@ -81,13 +81,13 @@ export default function App() {
                 key={c.key}
                 onClick={() => handleConditionChange(c.key)}
                 className={cn(
-                  "shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5 border whitespace-nowrap",
+                  "min-w-0 flex-1 sm:flex-none px-1.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-sm font-medium transition-all flex items-center justify-center gap-1 sm:gap-1.5 border whitespace-nowrap",
                   isActive
                     ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
                     : "bg-white text-slate-600 border-slate-200 hover:border-emerald-300 hover:text-emerald-700"
                 )}
               >
-                <Icon size={16} />
+                <Icon size={13} className="hidden sm:block sm:size-4 shrink-0" />
                 {c.label}
               </button>
             );

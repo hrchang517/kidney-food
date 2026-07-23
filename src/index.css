@@ -4,15 +4,6 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
-.no-scrollbar {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
 .markdown-body {
   @apply text-slate-700 leading-relaxed;
 }
