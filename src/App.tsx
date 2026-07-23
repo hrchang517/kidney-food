@@ -4,36 +4,54 @@
  */
 
 import React, { useState } from 'react';
-import { Search, Utensils, Info, AlertCircle, Loader2, ChevronRight, RefreshCw, Heart } from 'lucide-react';
+import { Search, Utensils, Info, AlertCircle, Loader2, ChevronRight, RefreshCw, Heart, Droplets, Activity, Wine, Flame } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { checkFoodSafety, generateMealPlan, DayPlan } from './services/gemini';
 import { cn } from './lib/utils';
+import { CONDITIONS, getCondition, ConditionKey } from '@/shared/conditions';
+
+const CONDITION_ICONS: Record<ConditionKey, React.ElementType> = {
+  kidney: Heart,
+  diabetes: Droplets,
+  hypertension: Activity,
+  liver: Wine,
+  diet: Flame,
+};
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'search' | 'plan'>('search');
+  const [condition, setCondition] = useState<ConditionKey>('kidney');
   const [foodQuery, setFoodQuery] = useState('');
   const [foodResult, setFoodResult] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
-  
+
   const [mealPlan, setMealPlan] = useState<DayPlan | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [healthStage, setHealthStage] = useState('일반적인 신장 건강 관리');
+  const config = getCondition(condition);
+  const [healthStage, setHealthStage] = useState(config.stages[0]);
+
+  const handleConditionChange = (key: ConditionKey) => {
+    setCondition(key);
+    setHealthStage(getCondition(key).stages[0]);
+    setMealPlan(null);
+    setFoodResult(null);
+  };
 
   const handleFoodSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!foodQuery.trim()) return;
-    
+
     setIsSearching(true);
     setFoodResult(null);
-    const result = await checkFoodSafety(foodQuery);
+    const result = await checkFoodSafety(foodQuery, condition);
     setFoodResult(result);
     setIsSearching(false);
   };
 
   const handleGeneratePlan = async () => {
     setIsGenerating(true);
-    const plan = await generateMealPlan(healthStage);
+    const plan = await generateMealPlan(healthStage, condition);
     if (plan) setMealPlan(plan);
     setIsGenerating(false);
   };
@@ -47,12 +65,35 @@ export default function App() {
             <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white">
               <Heart size={20} fill="currentColor" />
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-800">신장 건강 식단 가이드</h1>
+            <h1 className="text-xl font-bold tracking-tight text-slate-800">맞춤 건강 식단 가이드</h1>
           </div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
+        {/* Condition Selector */}
+        <div className="flex flex-wrap justify-center gap-2 mb-6">
+          {CONDITIONS.map((c) => {
+            const Icon = CONDITION_ICONS[c.key];
+            const isActive = condition === c.key;
+            return (
+              <button
+                key={c.key}
+                onClick={() => handleConditionChange(c.key)}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5 border",
+                  isActive
+                    ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-emerald-300 hover:text-emerald-700"
+                )}
+              >
+                <Icon size={16} />
+                {c.label}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Navigation Tabs */}
         <div className="flex p-1 bg-slate-200/50 rounded-xl mb-8 w-fit mx-auto">
           <button
@@ -89,7 +130,7 @@ export default function App() {
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                   <Info className="text-emerald-500" size={20} />
-                  신장에 좋은 음식인지 확인해보세요
+                  {config.label}에 좋은 음식인지 확인해보세요
                 </h2>
                 <form onSubmit={handleFoodSearch} className="flex gap-2">
                   <div className="relative flex-1">
@@ -112,7 +153,7 @@ export default function App() {
                 </form>
                 <p className="mt-3 text-sm text-slate-500 flex items-center gap-1.5">
                   <AlertCircle size={14} />
-                  신장 질환 단계에 따라 권장 사항이 다를 수 있습니다.
+                  {config.label} 관리 단계에 따라 권장 사항이 다를 수 있습니다.
                 </p>
               </div>
 
@@ -153,12 +194,9 @@ export default function App() {
                       onChange={(e) => setHealthStage(e.target.value)}
                       className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
                     >
-                      <option>일반적인 신장 건강 관리</option>
-                      <option>만성 신부전 초기 (1-2단계)</option>
-                      <option>만성 신부전 중기 (3단계)</option>
-                      <option>만성 신부전 후기 (4-5단계, 투석 전)</option>
-                      <option>혈액 투석 중</option>
-                      <option>복막 투석 중</option>
+                      {config.stages.map((stage) => (
+                        <option key={stage}>{stage}</option>
+                      ))}
                     </select>
                   </div>
                   <button
@@ -197,7 +235,7 @@ export default function App() {
                   <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl">
                     <h3 className="text-amber-800 font-bold mb-3 flex items-center gap-2">
                       <Info size={18} />
-                      오늘의 신장 건강 팁
+                      오늘의 {config.label} 건강 팁
                     </h3>
                     <ul className="space-y-2">
                       {mealPlan.tips.map((tip, i) => (
@@ -216,7 +254,7 @@ export default function App() {
       </main>
 
       <footer className="max-w-4xl mx-auto px-4 py-12 text-center text-slate-400 text-sm">
-        <p>© 2026 신장 건강 식단 가이드. 본 정보는 참고용이며, 반드시 전문의나 영양사와 상담하십시오.</p>
+        <p>© 2026 맞춤 건강 식단 가이드. 본 정보는 참고용이며, 반드시 전문의나 영양사와 상담하십시오.</p>
       </footer>
     </div>
   );

@@ -1,3 +1,5 @@
+import type { ConditionKey } from '@/shared/conditions';
+
 export interface Meal {
   time: string;
   menu: string;
@@ -12,14 +14,14 @@ export interface DayPlan {
   tips: string[];
 }
 
-export async function generateMealPlan(healthInfo: string = "일반적인 신장 건강 관리"): Promise<DayPlan | null> {
+export async function generateMealPlan(healthInfo: string, condition: ConditionKey): Promise<DayPlan | null> {
   try {
     const response = await fetch("/api/meal-plan", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ healthStage: healthInfo }),
+      body: JSON.stringify({ healthStage: healthInfo, condition }),
     });
 
     if (!response.ok) {
@@ -34,14 +36,14 @@ export async function generateMealPlan(healthInfo: string = "일반적인 신장
   }
 }
 
-export async function checkFoodSafety(foodName: string): Promise<string> {
+export async function checkFoodSafety(foodName: string, condition: ConditionKey): Promise<string> {
   try {
     const response = await fetch("/api/check-food", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ foodName }),
+      body: JSON.stringify({ foodName, condition }),
     });
 
     if (!response.ok) {

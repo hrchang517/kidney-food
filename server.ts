@@ -2,10 +2,11 @@ import express from "express";
 import path from "path";
 import { GoogleGenAI, Type } from "@google/genai";
 import { createServer as createViteServer } from "vite";
+import { getCondition, type ConditionKey } from "./shared/conditions";
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT || 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json());
 
@@ -19,16 +20,18 @@ async function startServer() {
 
   app.post("/api/check-food", async (req, res) => {
     try {
-      const { foodName } = req.body;
+      const { foodName, condition } = req.body;
       if (!foodName || typeof foodName !== "string") {
         return res.status(400).json({ error: "음식 이름을 입력해주세요." });
       }
 
+      const config = getCondition((condition as ConditionKey) ?? "kidney");
+
       const ai = getGenAI();
       const response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
-        contents: `'${foodName}'이(가) 신장 질환 환자에게 적합한지 알려줘.
-        나트륨, 칼륨, 인 함량을 고려해서 설명해주고, 섭취 시 주의사항이나 대체 식품이 있다면 함께 알려줘. 
+        contents: `'${foodName}'이(가) ${config.description}에게 적합한지 알려줘.
+        ${config.nutrientFocus}을 고려해서 설명해주고, 섭취 시 주의사항이나 대체 식품이 있다면 함께 알려줘.
         한국어로 친절하게 설명해줘.`,
       });
 
@@ -41,15 +44,16 @@ async function startServer() {
 
   app.post("/api/meal-plan", async (req, res) => {
     try {
-      const { healthStage } = req.body;
-      const healthInfo = healthStage || "일반적인 신장 건강 관리";
+      const { healthStage, condition } = req.body;
+      const config = getCondition((condition as ConditionKey) ?? "kidney");
+      const healthInfo = healthStage || config.stages[0];
 
       const ai = getGenAI();
       const response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
-        contents: `신장 건강 상태: ${healthInfo}. 이 상태에 맞는 하루 식단(아침, 점심, 저녁, 간식)을 추천해줘. 
-        각 식사는 메뉴 이름과 간단한 설명(왜 신장에 좋은지 등)을 포함해야 해. 
-        또한 신장 건강을 위한 일반적인 팁 3가지를 포함해줘.`,
+        contents: `건강 관리 대상: ${config.description} - 현재 상태: ${healthInfo}. 이 상태에 맞는 하루 식단(아침, 점심, 저녁, 간식)을 추천해줘.
+        각 식사는 메뉴 이름과 간단한 설명(${config.nutrientFocus}을 고려해 왜 이 상태에 좋은지 등)을 포함해야 해.
+        또한 ${config.label} 관리를 위한 일반적인 팁 3가지를 포함해줘.`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
