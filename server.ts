@@ -18,6 +18,17 @@ async function startServer() {
     return new GoogleGenAI({ apiKey });
   }
 
+  function toErrorResponse(error: any, fallback: string): { status: number; message: string } {
+    const raw = error?.message || String(error);
+    if (raw.includes("RESOURCE_EXHAUSTED") || raw.includes("429")) {
+      return {
+        status: 429,
+        message: "무료 API 사용량을 모두 소진했습니다. Gemini 무료 티어는 하루 요청 수가 제한되어 있으니 잠시 후 다시 시도해주세요.",
+      };
+    }
+    return { status: 500, message: raw || fallback };
+  }
+
   app.post("/api/check-food", async (req, res) => {
     try {
       const { foodName, condition } = req.body;
@@ -38,7 +49,8 @@ async function startServer() {
       return res.json({ result: response.text || "정보를 가져오지 못했습니다." });
     } catch (error: any) {
       console.error("Error checking food safety:", error);
-      return res.status(500).json({ error: error?.message || "서버 오류가 발생했습니다." });
+      const { status, message } = toErrorResponse(error, "서버 오류가 발생했습니다.");
+      return res.status(status).json({ error: message });
     }
   });
 
@@ -109,7 +121,8 @@ async function startServer() {
       return res.json(data);
     } catch (error: any) {
       console.error("Error generating meal plan:", error);
-      return res.status(500).json({ error: error?.message || "식단 생성 중 오류가 발생했습니다." });
+      const { status, message } = toErrorResponse(error, "식단 생성 중 오류가 발생했습니다.");
+      return res.status(status).json({ error: message });
     }
   });
 
@@ -134,7 +147,8 @@ async function startServer() {
       return res.json({ result: response.text || "레시피를 가져오지 못했습니다." });
     } catch (error: any) {
       console.error("Error generating recipe:", error);
-      return res.status(500).json({ error: error?.message || "레시피 생성 중 오류가 발생했습니다." });
+      const { status, message } = toErrorResponse(error, "레시피 생성 중 오류가 발생했습니다.");
+      return res.status(status).json({ error: message });
     }
   });
 
