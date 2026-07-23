@@ -4,10 +4,10 @@
  */
 
 import React, { useState } from 'react';
-import { Search, Utensils, Info, AlertCircle, Loader2, ChevronRight, RefreshCw, Heart, Droplets, Activity, Wine, Flame } from 'lucide-react';
+import { Search, Utensils, Info, AlertCircle, Loader2, ChevronRight, RefreshCw, Heart, Droplets, Activity, Wine, Flame, ChefHat, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
-import { checkFoodSafety, generateMealPlan, DayPlan } from './services/gemini';
+import { checkFoodSafety, generateMealPlan, getRecipe, DayPlan, Meal } from './services/gemini';
 import { cn } from './lib/utils';
 import { CONDITIONS, getCondition, ConditionKey } from '@/shared/conditions';
 
@@ -30,6 +30,10 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const config = getCondition(condition);
   const [healthStage, setHealthStage] = useState(config.stages[0]);
+
+  const [recipeMeal, setRecipeMeal] = useState<{ title: string; menu: string } | null>(null);
+  const [recipeText, setRecipeText] = useState<string | null>(null);
+  const [isLoadingRecipe, setIsLoadingRecipe] = useState(false);
 
   const handleConditionChange = (key: ConditionKey) => {
     setCondition(key);
@@ -54,6 +58,20 @@ export default function App() {
     const plan = await generateMealPlan(healthStage, condition);
     if (plan) setMealPlan(plan);
     setIsGenerating(false);
+  };
+
+  const handleMealClick = async (title: string, meal: Meal) => {
+    setRecipeMeal({ title, menu: meal.menu });
+    setRecipeText(null);
+    setIsLoadingRecipe(true);
+    const recipe = await getRecipe(meal.menu, condition);
+    setRecipeText(recipe);
+    setIsLoadingRecipe(false);
+  };
+
+  const closeRecipeModal = () => {
+    setRecipeMeal(null);
+    setRecipeText(null);
   };
 
   return (
@@ -226,10 +244,10 @@ export default function App() {
                   className="space-y-4"
                 >
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <MealCard title="아침 식사" meal={mealPlan.breakfast} icon="🌅" />
-                    <MealCard title="점심 식사" meal={mealPlan.lunch} icon="☀️" />
-                    <MealCard title="저녁 식사" meal={mealPlan.dinner} icon="🌙" />
-                    <MealCard title="간식" meal={mealPlan.snack} icon="🍎" />
+                    <MealCard title="아침 식사" meal={mealPlan.breakfast} icon="🌅" onClick={() => handleMealClick('아침 식사', mealPlan.breakfast)} />
+                    <MealCard title="점심 식사" meal={mealPlan.lunch} icon="☀️" onClick={() => handleMealClick('점심 식사', mealPlan.lunch)} />
+                    <MealCard title="저녁 식사" meal={mealPlan.dinner} icon="🌙" onClick={() => handleMealClick('저녁 식사', mealPlan.dinner)} />
+                    <MealCard title="간식" meal={mealPlan.snack} icon="🍎" onClick={() => handleMealClick('간식', mealPlan.snack)} />
                   </div>
 
                   <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl">
@@ -253,6 +271,50 @@ export default function App() {
         </AnimatePresence>
       </main>
 
+      <AnimatePresence>
+        {recipeMeal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/40 flex items-center justify-center p-4 z-50"
+            onClick={closeRecipeModal}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full max-h-[80vh] overflow-y-auto p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4 mb-4 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2 text-emerald-700 font-semibold text-lg">
+                  <ChefHat size={20} />
+                  {recipeMeal.title}: {recipeMeal.menu} 레시피
+                </div>
+                <button
+                  onClick={closeRecipeModal}
+                  className="text-slate-400 hover:text-slate-600 transition-colors shrink-0"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {isLoadingRecipe ? (
+                <div className="flex items-center justify-center gap-2 text-slate-500 py-12">
+                  <Loader2 className="animate-spin" size={20} />
+                  레시피를 불러오는 중...
+                </div>
+              ) : (
+                <div className="markdown-body">
+                  <Markdown>{recipeText}</Markdown>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <footer className="max-w-4xl mx-auto px-4 py-12 text-center text-slate-400 text-sm">
         <p>© 2026 맞춤 건강 식단 가이드. 본 정보는 참고용이며, 반드시 전문의나 영양사와 상담하십시오.</p>
       </footer>
@@ -260,15 +322,22 @@ export default function App() {
   );
 }
 
-function MealCard({ title, meal, icon }: { title: string; meal: any; icon: string }) {
+function MealCard({ title, meal, icon, onClick }: { title: string; meal: Meal; icon: string; onClick: () => void }) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-emerald-200 transition-colors group">
+    <button
+      onClick={onClick}
+      className="text-left w-full bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all group"
+    >
       <div className="flex justify-between items-start mb-3">
         <span className="text-2xl">{icon}</span>
         <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{meal.time}</span>
       </div>
       <h3 className="text-lg font-bold text-slate-800 mb-2 group-hover:text-emerald-600 transition-colors">{title}: {meal.menu}</h3>
-      <p className="text-slate-600 text-sm leading-relaxed">{meal.description}</p>
-    </div>
+      <p className="text-slate-600 text-sm leading-relaxed mb-3">{meal.description}</p>
+      <div className="flex items-center gap-1.5 text-sm font-medium text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity">
+        <ChefHat size={14} />
+        레시피 보기
+      </div>
+    </button>
   );
 }

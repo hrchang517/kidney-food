@@ -113,6 +113,31 @@ async function startServer() {
     }
   });
 
+  app.post("/api/recipe", async (req, res) => {
+    try {
+      const { menu, condition } = req.body;
+      if (!menu || typeof menu !== "string") {
+        return res.status(400).json({ error: "메뉴 이름이 필요합니다." });
+      }
+
+      const config = getCondition((condition as ConditionKey) ?? "kidney");
+
+      const ai = getGenAI();
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: `${config.description}를 위한 '${menu}' 레시피를 알려줘.
+        필요한 재료(1인분 기준 분량 포함)와 조리 순서를 번호를 매겨 단계별로 설명해줘.
+        ${config.nutrientFocus}을 고려한 조리 팁이나 대체 재료가 있다면 함께 알려줘.
+        한국어로 친절하게 설명해줘.`,
+      });
+
+      return res.json({ result: response.text || "레시피를 가져오지 못했습니다." });
+    } catch (error: any) {
+      console.error("Error generating recipe:", error);
+      return res.status(500).json({ error: error?.message || "레시피 생성 중 오류가 발생했습니다." });
+    }
+  });
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },

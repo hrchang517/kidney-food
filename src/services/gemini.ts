@@ -57,3 +57,25 @@ export async function checkFoodSafety(foodName: string, condition: ConditionKey)
     return "오류가 발생했습니다.";
   }
 }
+
+export async function getRecipe(menu: string, condition: ConditionKey): Promise<string> {
+  try {
+    const response = await fetch("/api/recipe", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ menu, condition }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server returned ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.result || "레시피를 가져오지 못했습니다.";
+  } catch (error) {
+    console.error("Error generating recipe:", error);
+    return "오류가 발생했습니다.";
+  }
+}
